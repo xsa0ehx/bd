@@ -71,11 +71,15 @@ def register_user(db: Session, data: RegisterRequest):
             # ایجاد پروفایل دانشجویی
         profile = StudentProfile(
             user_id=user.id,
+            first_name=data.first_name,
+            last_name=data.last_name,
             national_code=data.national_code,
+            student_number=data.student_number,
             phone_number=data.phone_number,
             gender=data.gender.value if hasattr(data.gender, 'value') else data.gender,
             address=data.address
         )
+
 
         db.add(profile)
         db.commit()

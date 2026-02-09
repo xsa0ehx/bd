@@ -19,6 +19,7 @@ class StudentProfile(Base):
     first_name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
     national_code = Column(String(10), unique=True, nullable=False, index=True)
+    student_number = Column(String(20), unique=True, nullable=False, index=True)
     phone_number = Column(String(11), nullable=False)
     gender = Column(String(10), nullable=False)  # brother/sister
     address = Column(String(200))
@@ -43,6 +44,7 @@ class StudentProfile(Base):
             "first_name": self.first_name,
             "last_name": self.last_name,
             "national_code": self.national_code,
+            "student_number": self.student_number,
             "phone_number": self.phone_number,
             "gender": self.gender,
             "address": self.address,
@@ -67,10 +69,15 @@ class StudentProfile(Base):
         """
         بررسی تکراری بودن شماره دانشجویی یا کد ملی
         """
-        conflict = db.query(StudentProfile).filter(
-            (StudentProfile.national_code == national_code) |
-            (StudentProfile.user_id != exclude_user_id)
-        ).first()
+        conflict_query = db.query(StudentProfile).filter(
+            (StudentProfile.national_code == national_code)
+            | (StudentProfile.student_number == student_number)
+        )
+
+        if exclude_user_id is not None:
+            conflict_query = conflict_query.filter(StudentProfile.user_id != exclude_user_id)
+
+        conflict = conflict_query.first()
 
         if conflict:
             raise HTTPException(
