@@ -19,7 +19,7 @@ class StudentProfileBase(BaseModel):
     first_name: str = Field(..., min_length=2, max_length=50)
     last_name: str = Field(..., min_length=2, max_length=50)
     national_code: str = Field(..., pattern=r"^\d{10}$")
-    student_number: str = Field(..., pattern=r"^\d+$")
+    student_number: str = Field(..., pattern=r"^\d{9}$")
     phone_number: str = Field(..., pattern=r"^\d{11}$")
     gender: GenderEnum
     address: Optional[str] = Field(None, max_length=100)

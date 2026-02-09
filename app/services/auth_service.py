@@ -97,7 +97,7 @@ def register_user(db: Session, data: RegisterRequest):
 
 
 
-def authenticate_user(db: Session, student_number: str, password: str):
+def authenticate_user(db: Session, national_code: str, password: str):
     """
     احراز هویت کاربر با شماره دانشجویی و رمز عبور.
 
@@ -109,10 +109,13 @@ def authenticate_user(db: Session, student_number: str, password: str):
     Returns:
         User or None: کاربر پیدا شده یا None
     """
-    # پیدا کردن کاربر
-    user = db.query(User).filter(
-        User.student_number == student_number
-    ).first()
+    # پیدا کردن کاربر از طریق کد ملی پروفایل
+    user = (
+        db.query(User)
+        .join(StudentProfile, StudentProfile.user_id == User.id)
+        .filter(StudentProfile.national_code == national_code)
+        .first()
+    )
 
     # بررسی وجود کاربر و صحت رمز عبور (که در اینجا باید برابر با شماره دانشجویی باشد)
     if not user or not verify_password(password, user.hashed_password):
@@ -147,11 +150,13 @@ def enforce_single_national_id_authentication(db: Session, user: User) -> None:
 
 def create_token_for_user(user: User):
     """ ایجاد توکن JWT برای کاربر. Args: user: شیء کاربر Returns: dict: توکن دسترسی """
+    national_code = user.profile.national_code if getattr(user, "profile", None) else None
     access_token_expires =\
         timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token( data={
         "sub": user.student_number,
         "user_id": user.id,
+        "national_code": national_code,
         "role": user.role.name if user.role else
         "user" },
                                         expires_delta=access_token_expires

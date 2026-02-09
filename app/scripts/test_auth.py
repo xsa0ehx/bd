@@ -30,7 +30,7 @@ def test_auth_endpoints():
     # ۲. تست ورود
     print("\n2. تست ورود:")
     login_data = {
-        "username": "4001234567",
+        "username": "0123456789",
         "password": "4001234567"
     }
 

@@ -64,7 +64,9 @@ async def test_auth():
         "phone_number",
         "gender",
         "address"
-        ]
+        ],
+        "login_identifier": "national_code",
+        "login_password": "student_number"
     }
 
 

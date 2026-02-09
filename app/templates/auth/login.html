@@ -28,13 +28,13 @@
 
         <form method="post" action="/ui-auth/login">
           <div class="mb-3">
-            <label class="form-label">شماره ملی</label>
-            <input type="text" name="username" class="form-control" required>
+            <label class="form-label">کد ملی</label>
+            <input type="text" name="national_code" class="form-control" value="{{ national_code if national_code }}" pattern="\\d{10}" inputmode="numeric" required>
           </div>
 
           <div class="mb-2">
             <label class="form-label">رمز عبور</label>
-            <input type="password" name="password" class="form-control" required>
+            <input type="password" name="password" class="form-control" pattern="\\d{9}" inputmode="numeric" required>
             <div class="form-text">
               رمز عبور شما همان شماره دانشجویی است.
             </div>

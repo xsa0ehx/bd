@@ -27,7 +27,7 @@
                     <div id="nameValidationError" class="alert alert-danger d-none name-error" role="alert">
                         لطفاً نام و نام خانوادگی معتبر وارد کنید.
                     </div>
-
+                    <div id="formatValidationError" class="alert alert-danger d-none name-error" role="alert"></div>
                     <div class="mb-3">
                         <label class="form-label">نام</label>
                         <input
@@ -56,17 +56,17 @@
 
                     <div class="mb-3">
                         <label class="form-label">شماره دانشجویی</label>
-                        <input type="text" name="student_number" class="form-control" required>
+                        <input type="text" name="student_number" class="form-control" required pattern="\\d{9}" inputmode="numeric">
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">کد ملی</label>
-                        <input type="text" name="national_code" class="form-control" required>
+                        <input type="text" name="national_code" class="form-control" required pattern="\\d{10}" inputmode="numeric">
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">شماره تلفن</label>
-                        <input type="text" name="phone_number" class="form-control" required>
+                        <input type="text" name="phone_number" class="form-control" required pattern="\\d{11}" inputmode="numeric">
                     </div>
 
                     <div class="mb-3">
@@ -103,12 +103,19 @@
     const form = document.getElementById("registration-form");
     const errorBox = document.getElementById("nameValidationError");
     const successBox = document.getElementById("registrationSuccess");
+    const formatErrorBox = document.getElementById("formatValidationError");
     const serverErrorBox = document.getElementById("registrationError");
 
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const firstName = form.querySelector("input[name='first_name']").value.trim();
         const lastName = form.querySelector("input[name='last_name']").value.trim();
+                const studentNumber = form.querySelector("input[name='student_number']").value.trim();
+        const nationalCode = form.querySelector("input[name='national_code']").value.trim();
+        const phoneNumber = form.querySelector("input[name='phone_number']").value.trim();
+        const studentNumber = form.querySelector("input[name='student_number']").value.trim();
+        const nationalCode = form.querySelector("input[name='national_code']").value.trim();
+        const phoneNumber = form.querySelector("input[name='phone_number']").value.trim();
 
         if (firstName.length < 2 || lastName.length < 2) {
             errorBox.classList.remove("d-none");
@@ -116,13 +123,32 @@
         }
 
         errorBox.classList.add("d-none");
+                formatErrorBox.classList.add("d-none");
+
+        if (!/^\d{9}$/.test(studentNumber)) {
+            formatErrorBox.textContent = "شماره دانشجویی باید ۹ رقم باشد.";
+            formatErrorBox.classList.remove("d-none");
+            return;
+        }
+
+        if (!/^\d{10}$/.test(nationalCode)) {
+            formatErrorBox.textContent = "کد ملی باید ۱۰ رقم باشد.";
+            formatErrorBox.classList.remove("d-none");
+            return;
+        }
+
+        if (!/^\d{11}$/.test(phoneNumber)) {
+            formatErrorBox.textContent = "شماره تماس باید ۱۱ رقم باشد.";
+            formatErrorBox.classList.remove("d-none");
+            return;
+        }
 
         const payload = {
             first_name: firstName,
             last_name: lastName,
-            student_number: form.querySelector("input[name='student_number']").value.trim(),
-            national_code: form.querySelector("input[name='national_code']").value.trim(),
-            phone_number: form.querySelector("input[name='phone_number']").value.trim(),
+            student_number: studentNumber,
+            national_code: nationalCode,
+            phone_number: phoneNumber,
             gender: form.querySelector("select[name='gender']").value,
             address: form.querySelector("textarea[name='address']").value.trim()
         };
@@ -143,6 +169,7 @@
             }
 
             serverErrorBox.classList.add("d-none");
+            formatErrorBox.classList.add("d-none");
             successBox.classList.remove("d-none");
             form.reset();
         } catch (error) {

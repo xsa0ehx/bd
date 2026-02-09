@@ -11,23 +11,24 @@ class GenderEnum(str, Enum):
 class RegisterRequest(BaseModel):
     first_name: str = Field(..., description="نام", min_length=2, max_length=50)
     last_name: str = Field(..., description="نام خانوادگی", min_length=2, max_length=50)
-    student_number: str
-    national_code: str
-    phone_number: str
+    student_number: str = Field(..., pattern=r"^\d{9}$")
+    national_code: str = Field(..., pattern=r"^\d{10}$")
+    phone_number: str = Field(..., pattern=r"^\d{11}$")
     gender: GenderEnum
     address: Optional[str] = None
 
 
 # Schema برای درخواست ورود
 class LoginRequest(BaseModel):
-    student_number: str = Field(..., description="شماره دانشجویی")
-    password: str = Field(..., description="رمز عبور")
+    national_code: str = Field(..., description="کد ملی", pattern=r"^\d{10}$")
+    student_number: str = Field(..., description="شماره دانشجویی", pattern=r"^\d{9}$")
+
 
     class Config:
         json_schema_extra = {
             "example": {
-                "student_number": "4001234567",
-                "password": "4001234567"
+                "national_code": "3200261196",
+                "student_number": "404370044"
             }
         }
 

@@ -20,7 +20,7 @@ from app.schemas.auth import RegisterRequest, GenderEnum
 from app.services.auth_service import register_user, enforce_single_national_id_authentication
 from app.core.security import create_access_token, verify_password
 from app.models.user import User
-
+from app.models.student_profile import StudentProfile
 # ----------------------------
 # Router & Templates
 # ----------------------------
@@ -175,15 +175,41 @@ async def show_login_page(
 @router.post("/login", response_class=HTMLResponse)
 async def submit_login(
     request: Request,
-    username: str = Form(...),  # شماره دانشجویی
-    password: str = Form(...),
+    national_code: str = Form(...),  # کد ملی
+    password: str = Form(...),  # شماره دانشجویی
     remember_me: Optional[str] = Form(None),
     redirect_url: Optional[str] = Form("/ui-auth/dashboard"),
     db: Session = DBDep()
 ):
-    user = db.query(User).filter(
-        User.student_number == username
-    ).first()
+    if not national_code.isdigit() or len(national_code) != 10:
+        return templates.TemplateResponse(
+            "auth/login.html",
+            {
+                "request": request,
+                "title": "ورود به سامانه",
+                "error_message": "کد ملی باید شامل ۱۰ رقم باشد.",
+                "national_code": national_code
+            },
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+    if not password.isdigit():
+        return templates.TemplateResponse(
+            "auth/login.html",
+            {
+                "request": request,
+                "title": "ورود به سامانه",
+                "error_message": "شماره دانشجویی باید فقط شامل رقم باشد.",
+                "national_code": national_code
+            },
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+
+    user = (
+        db.query(User)
+        .join(StudentProfile, StudentProfile.user_id == User.id)
+        .filter(StudentProfile.national_code == national_code)
+        .first()
+    )
 
     if not user or not verify_password(password, user.hashed_password):
         return templates.TemplateResponse(
@@ -191,8 +217,8 @@ async def submit_login(
             {
                 "request": request,
                 "title": "ورود به سامانه",
-                "error_message": "شماره دانشجویی یا رمز عبور نادرست است.",
-                "username": username
+                "error_message": "کد ملی یا شماره دانشجویی نادرست است.",
+                "national_code": national_code
             },
             status_code=status.HTTP_401_UNAUTHORIZED
         )
@@ -204,7 +230,7 @@ async def submit_login(
                 "request": request,
                 "title": "ورود به سامانه",
                 "error_message": "حساب کاربری شما غیرفعال شده است.",
-                "username": username
+                "national_code": national_code
             },
             status_code=status.HTTP_403_FORBIDDEN
         )
@@ -218,13 +244,17 @@ async def submit_login(
                 "request": request,
                 "title": "ورود به سامانه",
                 "error_message": e.detail,
-                "username": username
+                "national_code": national_code
             },
             status_code=status.HTTP_403_FORBIDDEN
         )
 
     access_token = create_access_token(
-        data={"sub": user.student_number, "user_id": user.id}
+        data={
+            "sub": user.student_number,
+            "user_id": user.id,
+            "national_code": user.profile.national_code if user.profile else None
+        }
     )
 
     max_age = 30 * 24 * 60 * 60 if remember_me else 24 * 60 * 60

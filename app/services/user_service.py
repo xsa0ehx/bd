@@ -56,10 +56,11 @@ def update_my_profile(
     profile = get_my_profile(db, user)
 
     # بررسی یکتایی شماره دانشجویی و کد ملی
+    national_code = data.national_code if data.national_code is not None else profile.national_code
     _check_uniqueness(
         db,
-        data.national_code,
-        data.student_number,
+        national_code,
+        profile.student_number,
         user.id,
     )
 

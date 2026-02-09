@@ -45,22 +45,31 @@ async def register(
     summary="ورود و دریافت توکن"
 )
 async def login(
-        form_data: OAuth2PasswordRequestForm = Depends(),  # داده‌های ورود شامل شماره دانشجویی و کد ملی
+        form_data: OAuth2PasswordRequestForm = Depends(), # داده‌های ورود شامل شماره دانشجویی و کد ملی
         db: Session = DBDep()  # دسترسی به دیتابیس
 ):
     """ورود به سیستم و دریافت توکن JWT."""
-
+    if not form_data.username.isdigit() or len(form_data.username) != 10:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="کد ملی باید شامل ۱۰ رقم باشد."
+        )
+    if not form_data.password.isdigit():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="شماره دانشجویی باید فقط شامل رقم باشد."
+        )
     # احراز هویت کاربر با استفاده از شماره دانشجویی و رمز عبور برابر با شماره دانشجویی
     user = authenticate_user(
         db,
-        student_number=form_data.username,
+        national_code=form_data.username,
         password=form_data.password  # رمز عبور برابر با شماره دانشجویی است
     )
 
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="شماره دانشجویی یا رمز عبور اشتباه است",
+            detail="کد ملی یا شماره دانشجویی اشتباه است",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
