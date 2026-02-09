@@ -23,7 +23,16 @@ router = APIRouter(
     "/register",
     response_model=RegisterResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="ثبت نام کاربر جدید"
+    summary="ثبت نام کاربر جدید",
+    description=(
+            "ثبت نام کاربر جدید با شماره دانشجویی، کد ملی و شماره تماس معتبر. "
+            "اعتبارسنجی طول فیلدها برای کد ملی (۱۰ رقم)، شماره دانشجویی (۹ رقم) "
+            "و شماره تماس (۱۱ رقم) اعمال می‌شود."
+    ),
+    responses={
+        400: {"description": "اطلاعات تکراری یا نامعتبر است."},
+        422: {"description": "خطای اعتبارسنجی داده‌ها."}
+    }
 )
 async def register(
         data: RegisterRequest,  # اطلاعات ثبت نام شامل شماره دانشجویی و کد ملی
@@ -54,10 +63,10 @@ async def login(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="کد ملی باید شامل ۱۰ رقم باشد."
         )
-    if not form_data.password.isdigit():
+    if not form_data.password.isdigit() or len(form_data.password) != 9:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="شماره دانشجویی باید فقط شامل رقم باشد."
+            detail="شماره دانشجویی باید شامل ۹ رقم باشد."
         )
     # احراز هویت کاربر با استفاده از شماره دانشجویی و رمز عبور برابر با شماره دانشجویی
     user = authenticate_user(

@@ -113,8 +113,10 @@ async def submit_register(
             status_code=status.HTTP_201_CREATED
         )
 
-    except ValidationError:
-        error_message = "اطلاعات ثبت‌نام نامعتبر است."
+    except ValidationError as exc:
+        validation_messages = [error.get("msg") for error in exc.errors()]
+        error_message = " ".join(validation_messages) or "اطلاعات ثبت‌نام نامعتبر است."
+
     except ValueError:
         # خطای enum جنسیت
         error_message = "جنسیت انتخاب‌شده معتبر نیست."
@@ -192,13 +194,13 @@ async def submit_login(
             },
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
         )
-    if not password.isdigit():
+    if not password.isdigit() or len(password) != 9:
         return templates.TemplateResponse(
             "auth/login.html",
             {
                 "request": request,
                 "title": "ورود به سامانه",
-                "error_message": "شماره دانشجویی باید فقط شامل رقم باشد.",
+                "error_message": "شماره دانشجویی باید  شامل ۹ رقم باشد.",
                 "national_code": national_code
             },
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY

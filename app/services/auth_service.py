@@ -13,7 +13,8 @@ from app.core.security import (
     hash_password,
     verify_password,
     create_access_token,
-    ACCESS_TOKEN_EXPIRE_MINUTES
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    MAX_BCRYPT_PASSWORD_BYTES,
 )
 
 
@@ -26,13 +27,23 @@ def register_user(db: Session, data: RegisterRequest):
         data: اطلاعات ثبت نام (RegisterRequest)
     """
 
+    student_number = data.student_number.strip()
+    national_code = data.national_code.strip()
+    phone_number = data.phone_number.strip()
+
+    if len(student_number.encode("utf-8")) > MAX_BCRYPT_PASSWORD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="شماره دانشجویی نباید بیشتر از ۷۲ بایت باشد."
+        )
+
 
     existing_user = db.query(User).filter(
-        User.student_number == data.student_number
-    ).first()
+        User.student_number == student_number).first()
 
     existing_profile = db.query(StudentProfile).filter(
-        StudentProfile.national_code == data.national_code
+        (StudentProfile.national_code == data.national_code)
+        | (StudentProfile.student_number == data.student_number)
     ).first()
 
     if existing_user:
@@ -43,7 +54,7 @@ def register_user(db: Session, data: RegisterRequest):
     if existing_profile:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="کد ملی قبلاً ثبت شده است"
+            detail="کد ملی یا شماره دانشجویی قبلاً ثبت شده است"
         )
 
     try:
@@ -55,12 +66,14 @@ def register_user(db: Session, data: RegisterRequest):
             role = Role(name="user", description="کاربر عادی")
             db.add(role)
             db.flush()
-            # رمز عبور برابر با شماره دانشجویی
-        hashed_password = hash_password(data.student_number[:72])
 
-    # ایجاد کاربر
+        password = data.student_number[:72]
+        hashed_password = hash_password(password)
+
+
+        # ایجاد کاربر
         user = User(
-            student_number=data.student_number,
+            student_number=student_number,
             hashed_password=hashed_password,
             role_id=role.id
         )
@@ -73,10 +86,10 @@ def register_user(db: Session, data: RegisterRequest):
             user_id=user.id,
             first_name=data.first_name,
             last_name=data.last_name,
-            national_code=data.national_code,
-            student_number=data.student_number,
-            phone_number=data.phone_number,
-            gender=data.gender.value if hasattr(data.gender, 'value') else data.gender,
+            national_code=national_code,
+            student_number=student_number,
+            phone_number=phone_number,
+            gender=data.gender.value if hasattr(data.gender, "value") else data.gender,
             address=data.address
         )
 
@@ -92,24 +105,20 @@ def register_user(db: Session, data: RegisterRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="اطلاعات وارد شده تکراری یا نامعتبر است."
         ) from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logging.exception("Database error while registering user.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="ثبت‌نام با خطا مواجه شد. لطفاً دوباره تلاش کنید."
+        ) from exc
 
     return user
 
 
 
 def authenticate_user(db: Session, national_code: str, password: str):
-    """
-    احراز هویت کاربر با شماره دانشجویی و رمز عبور.
 
-    Args:
-        db: Session دیتابیس
-        student_number: شماره دانشجویی
-        password: رمز عبور
-
-    Returns:
-        User or None: کاربر پیدا شده یا None
-    """
-    # پیدا کردن کاربر از طریق کد ملی پروفایل
     user = (
         db.query(User)
         .join(StudentProfile, StudentProfile.user_id == User.id)
