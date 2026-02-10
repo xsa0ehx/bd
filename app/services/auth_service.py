@@ -67,8 +67,8 @@ def register_user(db: Session, data: RegisterRequest):
             db.add(role)
             db.flush()
 
-        password = student_number[:72]
-        hashed_password = hash_password(password)
+
+        hashed_password = hash_password(student_number)
 
 
         # ایجاد کاربر
@@ -105,6 +105,14 @@ def register_user(db: Session, data: RegisterRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="اطلاعات وارد شده تکراری یا نامعتبر است."
         ) from exc
+
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc)
+        ) from exc
+
     except SQLAlchemyError as exc:
         db.rollback()
         logging.exception("Database error while registering user.")
@@ -154,7 +162,15 @@ def enforce_single_national_id_authentication(db: Session, user: User) -> None:
         )
 
     profile.has_authenticated = True
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logging.exception("Database error while updating authentication status.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="خطا در ثبت وضعیت احراز هویت. لطفاً دوباره تلاش کنید."
+        ) from exc
 
 
 def create_token_for_user(user: User):

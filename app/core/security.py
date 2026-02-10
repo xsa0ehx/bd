@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import bcrypt
 from jose import jwt, JWTError
-from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -17,7 +17,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 MAX_BCRYPT_PASSWORD_BYTES = 72
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 if SECRET_KEY == "CHANGE_THIS_SECRET_KEY":
     logging.getLogger(__name__).warning(
@@ -34,34 +34,33 @@ credentials_exception = HTTPException(
 
 def hash_password(password: str) -> str:
     """هش کردن رمز عبور."""
-    safe_password = normalize_password(password, truncate=True)
-    return pwd_context.hash(safe_password)
+    safe_password = normalize_password(password)
+    return bcrypt.hashpw(safe_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """تأیید رمز عبور."""
-    safe_password = normalize_password(plain_password, truncate=True)
-    return pwd_context.verify(safe_password, hashed_password)
+    try:
+        safe_password = normalize_password(plain_password)
+    except ValueError:
+        return False
 
+    try:
+        return bcrypt.checkpw(
+            safe_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
+    except ValueError:
+        logging.getLogger(__name__).warning("Invalid password hash encountered.")
+        return False
 
-def normalize_password(password: str, *, truncate: bool = False) -> str:
-    """
-    اطمینان از اینکه طول رمز عبور با محدودیت bcrypt سازگار است.
+def normalize_password(password: str) -> str:
 
-    در صورت نیاز می‌تواند رمز عبور را به طول مجاز کوتاه کند تا از خطای 500 جلوگیری شود.
-    """
     password_bytes = password.encode("utf-8")
-    if len(password_bytes) <= MAX_BCRYPT_PASSWORD_BYTES:
-        return password
-
-    if not truncate:
+    if len(password_bytes) > MAX_BCRYPT_PASSWORD_BYTES:
         raise ValueError("رمز عبور نباید بیشتر از ۷۲ بایت باشد.")
 
-    logging.warning(
-        "Password exceeded bcrypt limit. Truncating to %d bytes.",
-        MAX_BCRYPT_PASSWORD_BYTES,
-    )
-    return password_bytes[:MAX_BCRYPT_PASSWORD_BYTES].decode("utf-8", errors="ignore")
+    return password
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

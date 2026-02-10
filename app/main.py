@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 import logging
+from sqlalchemy.exc import SQLAlchemyError
 from app.routers import admin_audit
 from app.routers import student, admin, test, user, admin_ui, admin_dashboard
 from app.core.database import create_database
@@ -77,9 +78,10 @@ async def create_default_roles():
         db.commit()
 
 
-    except Exception as e:
+
+    except SQLAlchemyError:
         db.rollback()
-        logger.error(f"❌ Error creating default roles: {e}")
+        logger.exception("❌ Database error while creating default roles")
         # برنامه را متوقف نکن، فقط خطا را لاگ کن
     finally:
         db.close()
@@ -138,9 +140,8 @@ async def log_requests(request: Request, call_next):
 
     try:
         response = await call_next(request)
-    except Exception as e:
-        logger.error(f"❌ Error processing {method} {url}: {e}")
-        raise
+    except Exception:
+        logger.exception(f"❌ Error processing {method} {url}")
 
     process_time = time.time() - start_time
     response.headers["X-Process-Time"] = str(process_time)
@@ -193,13 +194,12 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """مدیریت خطاهای عمومی."""
-    logger.error(f"💥 Unhandled error: {exc}", exc_info=True)
+    logger.exception("💥 Unhandled error")
 
     return JSONResponse(
         status_code=500,
         content={
-            "detail": "خطای داخلی سرور",
-            "error": str(exc)
+            "detail": "خطای داخلی سرور"
         },
     )
 

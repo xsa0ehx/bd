@@ -129,8 +129,6 @@
     const successBox = document.getElementById("registrationSuccess");
     const formatErrorBox = document.getElementById("formatValidationError");
     const serverErrorBox = document.getElementById("registrationError");
-    const genderValue = form.querySelector("select[name='gender']").value;
-    const addressValue = form.querySelector("textarea[name='address']").value.trim();
 
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -139,6 +137,8 @@
         const studentNumber = form.querySelector("input[name='student_number']").value.trim();
         const nationalCode = form.querySelector("input[name='national_code']").value.trim();
         const phoneNumber = form.querySelector("input[name='phone_number']").value.trim();
+                const genderValue = form.querySelector("select[name='gender']").value;
+        const addressValue = form.querySelector("textarea[name='address']").value.trim();
 
         errorBox.classList.add("d-none");
         formatErrorBox.classList.add("d-none");
