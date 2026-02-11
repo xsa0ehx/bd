@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_db
 from app.core.security import get_current_admin
 from app.models.user import User
+from app.routers.admin_access import ensure_admin_interface_auth
 from app.services.audit_service import (
     get_audit_logs,
     get_simple_audit_stats
@@ -19,8 +20,12 @@ router = APIRouter(prefix="/admin", tags=["Admin Dashboard"])
 def admin_dashboard(
         request: Request,
         db: Session = Depends(get_db),
-        _: User = Depends(get_current_admin),
 ):
+
+    unauthorized=ensure_admin_interface_auth(request)
+    if unauthorized:
+        return unauthorized
+
     """داشبورد ادمین - فقط آخرین لاگ‌ها"""
 
     # دریافت آخرین لاگ‌ها (۱۰ مورد)
@@ -49,7 +54,6 @@ def admin_dashboard(
 def audit_logs_page(
         request: Request,
         db: Session = Depends(get_db),
-        _: User = Depends(get_current_admin),
         skip: int = Query(0, ge=0, description="تعداد رکوردهای رد شده"),
         limit: int = Query(50, ge=1, le=200, description="تعداد رکوردهای قابل نمایش"),
         date_from: Optional[datetime] = Query(None, description="تاریخ شروع"),
@@ -58,6 +62,9 @@ def audit_logs_page(
         user_id: Optional[int] = Query(None, description="فیلتر بر اساس کاربر"),
 ):
     """صفحه نمایش لاگ‌های سیستم"""
+    unauthorized = ensure_admin_interface_auth(request)
+    if unauthorized:
+        return unauthorized
 
     # دریافت لاگ‌ها
     result = get_audit_logs(
@@ -93,10 +100,10 @@ def audit_logs_page(
     )
 
 
-@router.get("/api/audit-logs", response_model=dict)
+@router.get("/api/audit-logs")
 def list_audit_logs_api(
+        request: Request,
         db: Session = Depends(get_db),
-        _: User = Depends(get_current_admin),
         skip: int = Query(0, ge=0),
         limit: int = Query(50, ge=1, le=200),
         date_from: Optional[datetime] = Query(None),
@@ -105,6 +112,9 @@ def list_audit_logs_api(
         user_id: Optional[int] = Query(None),
 ):
     """API دریافت لیست لاگ‌ها (برای AJAX/API calls)"""
+    unauthorized = ensure_admin_interface_auth(request)
+    if unauthorized:
+        return unauthorized
 
     result = get_audit_logs(
         db=db,

@@ -1,14 +1,14 @@
 import csv
 from io import StringIO
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from datetime import datetime
-from openpyxl import Workbook
 from io import BytesIO
 from fastapi.responses import StreamingResponse
 from app.core.deps import get_db
-from app.core.security import get_current_admin
+from app.routers.admin_access import ensure_admin_interface_aut, ensure_admin_interface_auth
 from app.models.audit_log import AuditLog
+
 
 router = APIRouter(
     prefix="/admin/audit-logs",
@@ -17,13 +17,17 @@ router = APIRouter(
 
 @router.get("/export/csv")
 def export_audit_logs_csv(
+    request: Request,
     db: Session = Depends(get_db),
-    admin=Depends(get_current_admin),
     user_id: int | None = Query(None),
     action: str | None = Query(None),
     date_from: datetime | None = Query(None),
     date_to: datetime | None = Query(None),
 ):
+    unauthorized = ensure_admin_interface_auth(request)
+    if unauthorized:
+        return unauthorized
+
     # فیلتر کردن لاگ‌ها بر اساس پارامترها
     query = db.query(AuditLog)
     if user_id:
@@ -70,13 +74,17 @@ def export_audit_logs_csv(
 
 @router.get("/export/excel")
 def export_audit_logs_excel(
+request: Request,
     db: Session = Depends(get_db),
-    admin=Depends(get_current_admin),
     user_id: int | None = Query(None),
     action: str | None = Query(None),
     date_from: datetime | None = Query(None),
     date_to: datetime | None = Query(None),
 ):
+    unauthorized = ensure_admin_interface_auth(request)
+    if unauthorized:
+        return unauthorized
+
     # فیلتر کردن لاگ‌ها
     query = db.query(AuditLog)
     if user_id:
@@ -91,6 +99,7 @@ def export_audit_logs_excel(
     logs = query.order_by(AuditLog.created_at.desc()).all()
 
     # تولید فایل Excel
+    from openpyxl import Workbook
     wb = Workbook()
     ws = wb.active
     ws.title = "Audit Logs"

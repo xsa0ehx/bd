@@ -3,13 +3,14 @@ import time
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 import logging
 from sqlalchemy.exc import SQLAlchemyError
 from app.routers import admin_audit
-from app.routers import student, admin, test, user, admin_ui, admin_dashboard, ui_dashboard
+from app.routers import student, admin, test, user, admin_ui, admin_dashboard, ui_dashboard, admin_access
 from app.core.database import create_database
 from app.routers.auth import router as auth_router
 from app.routers.ui_auth import router as ui_auth_router
@@ -110,6 +111,9 @@ app = FastAPI(
     ]
 )
 
+app.state.templates = Jinja2Templates(directory="app/templates")
+
+
 # تنظیمات CORS
 cors_allow_origins = list(settings.cors_allow_origins)
 cors_allow_credentials = settings.cors_allow_credentials
@@ -158,6 +162,15 @@ async def log_requests(request: Request, call_next):
 
     logger.info(f"✅ Response: {method} {url} - Status: {response.status_code} - Time: {process_time:.3f}s")
 
+    return response
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Content-Security-Policy", "default-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net data:; img-src 'self' data:;")
     return response
 
 
@@ -339,6 +352,7 @@ app.include_router(ui_auth_router)
 app.include_router(user.router)
 app.include_router(student.router)
 app.include_router(admin.router)
+app.include_router(admin_access.router)
 app.include_router(admin_ui.router)
 app.include_router(admin_dashboard.router)
 app.include_router(ui_dashboard.router)
