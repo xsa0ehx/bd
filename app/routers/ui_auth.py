@@ -18,8 +18,9 @@ from sqlalchemy.orm import Session
 from app.core.deps import DBDep
 from app.schemas.auth import RegisterRequest, GenderEnum
 from app.services.auth_service import register_user, enforce_single_national_id_authentication
-from app.core.security import create_access_token, verify_password
+from app.core.security import create_access_token, verify_password, SECRET_KEY, ALGORITHM
 from app.models.user import User
+from jose import JWTError, jwt
 from app.models.student_profile import StudentProfile
 from app.core.confing import settings
 from app.core.validators import validate_national_code, validate_student_number
@@ -304,12 +305,42 @@ async def user_dashboard(
             url="/ui-auth/login?redirect=/ui-auth/dashboard",
             status_code=status.HTTP_303_SEE_OTHER
         )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("user_id")
+    except JWTError:
+        response = RedirectResponse(
+            url="/ui-auth/login?redirect=/ui-auth/dashboard",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+        response.delete_cookie("access_token")
+        return response
+
+    if not user_id:
+        response = RedirectResponse(
+            url="/ui-auth/login?redirect=/ui-auth/dashboard",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+        response.delete_cookie("access_token")
+        return response
+
+    user = db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
+    if not user:
+        response = RedirectResponse(
+            url="/ui-auth/login?redirect=/ui-auth/dashboard",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+        response.delete_cookie("access_token")
+        return response
+
 
     return templates.TemplateResponse(
         "dashboard/main.html",
         {
             "request": request,
             "title": "داشبورد کاربری",
-            "message": "به داشبورد خوش آمدید"
+            "message": "به داشبورد خوش آمدید",
+            "user": user,
+            "profile": user.profile,
         }
     )

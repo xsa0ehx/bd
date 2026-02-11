@@ -130,6 +130,7 @@ app.add_middleware(
 async def log_requests(request: Request, call_next):
     """لاگ تمام درخواست‌های ورودی."""
     start_time = time.time()
+    response = None
 
     # اطلاعات درخواست
     client_host = request.client.host if request.client else "unknown"
@@ -142,8 +143,17 @@ async def log_requests(request: Request, call_next):
         response = await call_next(request)
     except Exception:
         logger.exception(f"❌ Error processing {method} {url}")
+        response = JSONResponse(
+            status_code=500,
+            content={"detail": "خطای داخلی سرور"},
+        )
 
     process_time = time.time() - start_time
+    if response is None:
+        response = JSONResponse(
+            status_code=500,
+            content={"detail": "خطای داخلی سرور"},
+        )
     response.headers["X-Process-Time"] = str(process_time)
 
     logger.info(f"✅ Response: {method} {url} - Status: {response.status_code} - Time: {process_time:.3f}s")
