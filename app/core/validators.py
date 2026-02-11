@@ -47,15 +47,25 @@ def normalize_digits(value: Any) -> Optional[str]:
         normalized = re.sub(r"[\s\u200c\u200f\-_()]+", "", normalized)
         return normalized
 
-def _normalize_fixed_digits(value: Any, *, length: int, field_name: str) -> str:
+def _normalize_fixed_digits(
+    value: Any,
+    *,
+    length: int,
+    field_name: str,
+    invalid_message: Optional[str] = None,
+) -> str:
     text_value = _coerce_to_text(value)
-    normalized = unicodedata.normalize("NFKC", text_value).translate(
-        _DIGIT_TRANSLATION) if text_value is not None else None
+    normalized = normalize_digits(text_value) if text_value is not None else None
     if normalized is None or normalized == "":
         raise ValueError(f"{field_name} الزامی است")
+    if re.fullmatch(r"\d+", normalized) and len(normalized) != length:
+        raise ValueError(f"{field_name} باید {length} رقم باشد")
+
 
 
     if not re.fullmatch(rf"\d{{{length}}}", normalized):
+        if invalid_message:
+            raise ValueError(invalid_message)
         persian_length = str(length).translate(str.maketrans("0123456789", _PERSIAN_DIGITS))
         raise ValueError(f"{field_name} باید {persian_length} رقم باشد")
 
@@ -81,7 +91,12 @@ def validate_phone_number(value: Any) -> Optional[str]:
 def validate_national_code(value: Any) -> Optional[str]:
     if value is None:
         return value
-    return _normalize_fixed_digits(value, length=10, field_name="کد ملی")
+    return _normalize_fixed_digits(
+        value,
+        length=10,
+        field_name="کد ملی",
+        invalid_message="کد ملی معتبر نیست",
+    )
 
 def validate_gender(value: Optional[str]) -> Optional[str]:
     if value is None:
