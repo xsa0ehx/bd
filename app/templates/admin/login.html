@@ -4,32 +4,29 @@
 
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-md-5 col-lg-4">
-    <div class="card shadow-sm border-0">
+  <div class="col-md-6 col-lg-5">
+    <div class="card shadow-sm">
       <div class="card-body p-4">
-        <h5 class="text-center mb-3">
-          <i class="bi bi-shield-lock-fill text-danger"></i>
-          ورود مدیر سیستم
-        </h5>
-        <p class="text-muted small text-center mb-4">
-          لطفاً رمز عبور مدیر را وارد کنید.
-        </p>
+        <h4 class="mb-3 text-center">🔐 ورود مدیر سامانه</h4>
+        <p class="text-muted text-center">برای مشاهده اطلاعات کاربران رمز عبور مدیر را وارد کنید.</p>
 
         {% if error_message %}
-          <div class="alert alert-danger" role="alert">
-            {{ error_message }}
-          </div>
+        <div class="alert alert-danger">{{ error_message }}</div>
         {% endif %}
 
-        <form method="post" action="/ui-auth/admin/login">
-          <input type="hidden" name="redirect_url" value="{{ redirect_url if redirect_url }}">
+        {% if is_blocked and blocked_until %}
+        <div class="alert alert-warning">
+          ورود تا <strong>{{ blocked_until.strftime('%Y-%m-%d %H:%M:%S') }}</strong> مسدود است.
+        </div>
+        {% endif %}
+
+        <form method="post" action="/admin/login">
           <div class="mb-3">
-            <label class="form-label">رمز عبور مدیر</label>
-            <input type="password" name="password" class="form-control" required autocomplete="current-password">
+            <label for="password" class="form-label">رمز عبور مدیر</label>
+            <input id="password" name="password" type="password" class="form-control" required autocomplete="current-password" {% if is_blocked %}disabled{% endif %}>
           </div>
-          <button class="btn btn-danger w-100" type="submit">
-            ورود به داشبورد مدیر
-          </button>
+
+          <button class="btn btn-primary w-100" type="submit" {% if is_blocked %}disabled{% endif %}>ورود به داشبورد</button>
         </form>
       </div>
     </div>

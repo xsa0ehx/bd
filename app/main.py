@@ -9,8 +9,8 @@ from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 import logging
 from sqlalchemy.exc import SQLAlchemyError
-from app.routers import admin_audit, admin_auth_ui
-from app.routers import student, admin, test, user, admin_ui, admin_dashboard, ui_dashboard, admin_access
+from app.routers import admin_audit
+from app.routers import student, admin, test, user, admin_ui, admin_dashboard, ui_dashboard, admin_auth
 from app.core.database import create_database
 from app.routers.auth import router as auth_router
 from app.routers.ui_auth import router as ui_auth_router
@@ -111,9 +111,6 @@ app = FastAPI(
     ]
 )
 
-app.state.templates = Jinja2Templates(directory="app/templates")
-
-
 # تنظیمات CORS
 cors_allow_origins = list(settings.cors_allow_origins)
 cors_allow_credentials = settings.cors_allow_credentials
@@ -128,7 +125,6 @@ app.add_middleware(
     allow_methods=list(settings.cors_allow_methods),
     allow_headers=list(settings.cors_allow_headers),
 )
-
 
 # Middleware برای لاگ‌گیری درخواست‌ها
 @app.middleware("http")
@@ -148,10 +144,7 @@ async def log_requests(request: Request, call_next):
         response = await call_next(request)
     except Exception:
         logger.exception(f"❌ Error processing {method} {url}")
-        response = JSONResponse(
-            status_code=500,
-            content={"detail": "خطای داخلی سرور"},
-        )
+        raise
 
     process_time = time.time() - start_time
     if response is None:
@@ -163,15 +156,6 @@ async def log_requests(request: Request, call_next):
 
     logger.info(f"✅ Response: {method} {url} - Status: {response.status_code} - Time: {process_time:.3f}s")
 
-    return response
-
-@app.middleware("http")
-async def add_security_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    response.headers.setdefault("Content-Security-Policy", "default-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net data:; img-src 'self' data:;")
     return response
 
 
@@ -261,10 +245,9 @@ async def read_root():
                                 سیستم احراز هویت بسیج دانشجویی
                             </p>
 
-                            <div class="d-grid gap-3 d-md-flex justify-content-md-center mb-4">
-                                <a href="/docs" class="btn btn-primary btn-lg px-4">
-                                    <i class="bi bi-book me-2"></i>
-                                    مستندات API
+                            <a href="/admin/login" class="btn btn-primary btn-lg px-4">
+                                    <i class="bi bi-shield-lock me-2"></i>
+                                    ورود مدیر
                                 </a>
                                 <a href="/ui-auth" class="btn btn-outline-primary btn-lg px-4">
                                     <i class="bi bi-display me-2"></i>
@@ -319,7 +302,7 @@ async def get_api_info():
             "ui_authentication": "/ui-auth",
             "user_management": "/users",
             "testing": "/test",
-            "documentation": "/docs"
+            "admin_portal": "/admin/login"
         },
         "database": {
             "type": "SQLite",
@@ -353,11 +336,10 @@ app.include_router(ui_auth_router)
 app.include_router(user.router)
 app.include_router(student.router)
 app.include_router(admin.router)
-app.include_router(admin_access.router)
 app.include_router(admin_ui.router)
+app.include_router(admin_auth.router)
 app.include_router(admin_dashboard.router)
 app.include_router(ui_dashboard.router)
-app.include_router(admin_auth_ui.router)
 app.include_router(admin_audit.router)
 
 

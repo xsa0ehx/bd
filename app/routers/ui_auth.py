@@ -24,6 +24,7 @@ from jose import JWTError, jwt
 from app.models.student_profile import StudentProfile
 from app.core.confing import settings
 from app.core.validators import validate_national_code, validate_student_number
+import logging
 # ----------------------------
 # Router & Templates
 # ----------------------------
@@ -33,7 +34,7 @@ router = APIRouter(
 )
 
 templates = Jinja2Templates(directory="app/templates")
-
+logger = logging.getLogger(__name__)
 
 # ----------------------------
 # Home Page
@@ -186,6 +187,7 @@ async def submit_login(
     redirect_url: Optional[str] = Form("/ui/dashboard"),
     db: Session = DBDep()
 ):
+    logger.info("UI login attempt received")
     try:
         normalized_national_code = validate_national_code(national_code)
         normalized_password = validate_student_number(password)
@@ -201,15 +203,32 @@ async def submit_login(
             },
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
         )
+    try:
+        user = (
+            db.query(User)
+            .join(StudentProfile, StudentProfile.user_id == User.id)
+            .filter(StudentProfile.national_code == normalized_national_code)
+            .first()
+        )
+    except Exception:
+        logger.exception("UI login query failed")
+        return templates.TemplateResponse(
+            "auth/login.html",
+            {
+                "request": request,
+                "title": "ورود به سامانه",
+                "error_message": "در حال حاضر امکان ورود وجود ندارد. لطفاً دوباره تلاش کنید.",
+                "national_code": national_code,
+                "redirect_url": redirect_url,
+            },
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
-    user = (
-        db.query(User)
-        .join(StudentProfile, StudentProfile.user_id == User.id)
-        .filter(StudentProfile.national_code == normalized_national_code)
-        .first()
-    )
+    logger.info("UI login candidate lookup completed: user_found=%s", bool(user))
+
 
     if not user or not verify_password(normalized_password, user.hashed_password):
+        logger.warning("UI login failed due to invalid credentials")
         return templates.TemplateResponse(
             "auth/login.html",
             {
@@ -223,6 +242,7 @@ async def submit_login(
         )
 
     if not user.is_active:
+        logger.warning("UI login blocked for inactive user: user_id=%s", user.id)
         return templates.TemplateResponse(
             "auth/login.html",
             {
@@ -238,6 +258,7 @@ async def submit_login(
     try:
         enforce_single_national_id_authentication(db, user)
     except HTTPException as e:
+        logger.exception("UI login post-authentication state update failed")
         return templates.TemplateResponse(
             "auth/login.html",
             {
@@ -260,6 +281,7 @@ async def submit_login(
 
     max_age = 30 * 24 * 60 * 60 if remember_me else 24 * 60 * 60
 
+    logger.info("UI login success: user_id=%s", user.id)
     response = RedirectResponse(
         url=redirect_url,
         status_code=status.HTTP_303_SEE_OTHER

@@ -104,7 +104,14 @@ def export_audit_logs_excel(
 
 
     # تولید فایل Excel
-    from openpyxl import Workbook
+    try:
+        from openpyxl import Workbook
+    except ModuleNotFoundError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Excel export نیازمند نصب openpyxl است. دستور: pip install -r app/requirements.txt",
+        ) from exc
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Audit Logs"

@@ -160,15 +160,25 @@ def authenticate_user(db: Session, national_code: str, password: str):
     normalized_national_code = normalize_digits(national_code)
     normalized_password = normalize_digits(password)
 
-    candidates = (
-        db.query(User)
-        .join(StudentProfile, StudentProfile.user_id == User.id)
-        .filter(
-            StudentProfile.national_code == normalized_national_code,
-            User.student_number == normalized_password,
+    try:
+        candidates = (
+            db.query(User)
+            .join(StudentProfile, StudentProfile.user_id == User.id)
+            .filter(
+                StudentProfile.national_code == normalized_national_code,
+                User.student_number == normalized_password,
+            )
+            .all()
         )
-        .all()
-    )
+    except SQLAlchemyError as exc:
+        logger.exception(
+            "Login query failed: national_code=%s",
+            normalized_national_code,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="خطا در بازیابی اطلاعات ورود. لطفاً دوباره تلاش کنید.",
+        ) from exc
 
     # بررسی وجود کاربر و صحت رمز عبور (که در اینجا باید برابر با شماره دانشجویی باشد)
     logger.info(
@@ -179,6 +189,11 @@ def authenticate_user(db: Session, national_code: str, password: str):
     )
 
     for candidate in candidates:
+        logger.debug(
+            "Verifying password for login candidate: user_id=%s national_code=%s",
+            candidate.id,
+            normalized_national_code,
+        )
         if verify_password(normalized_password, candidate.hashed_password):
             logger.info(
                 "Login success: user_id=%s national_code=%s",
@@ -191,6 +206,41 @@ def authenticate_user(db: Session, national_code: str, password: str):
         "Login failed: national_code=%s reason=invalid_password_or_not_found",
         normalized_national_code,
     )
+    return None
+
+
+def authenticate_admin_password(db: Session, password: str):
+    """
+    احراز هویت ادمین فقط با رمز عبور.
+
+    این تابع برای endpoint ورود پنل ادمین استفاده می‌شود و با bcrypt
+    مقدار ورودی را با هش ذخیره‌شده مقایسه می‌کند.
+    """
+    normalized_password = password.strip()
+
+    admin_users = (
+        db.query(User)
+        .join(Role, Role.id == User.role_id)
+        .filter(Role.name == "admin")
+        .all()
+    )
+
+    logger.info(
+        "Admin login attempt: admin_candidates=%s input_length=%s",
+        len(admin_users),
+        len(normalized_password),
+    )
+
+    if not admin_users:
+        logger.error("Admin login failed: no admin account found.")
+        return None
+
+    for admin_user in admin_users:
+        if verify_password(normalized_password, admin_user.hashed_password):
+            logger.info("Admin login success: user_id=%s", admin_user.id)
+            return admin_user
+
+    logger.warning("Admin login failed: invalid admin password.")
     return None
 
 def enforce_single_national_id_authentication(db: Session, user: User) -> None:

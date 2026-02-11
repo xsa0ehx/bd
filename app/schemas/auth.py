@@ -69,6 +69,9 @@ class LoginRequest(BaseModel):
             }
         }
 
+class AdminLoginRequest(BaseModel):
+    password: str = Field(..., description="رمز عبور مدیر", min_length=1)
+
 # Schema برای پاسخ توکن
 class Token(BaseModel):
     access_token: str = Field(..., description="توکن دسترسی JWT")

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}جزئیات کاربر{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4>🧾 جزئیات کاربر</h4>
+  <a href="/admin/dashboard" class="btn btn-outline-secondary btn-sm">بازگشت به داشبورد</a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <ul class="list-group list-group-flush">
+      <li class="list-group-item"><strong>شناسه:</strong> {{ user.id }}</li>
+      <li class="list-group-item"><strong>نام:</strong> {{ user.profile.first_name if user.profile else '-' }} {{ user.profile.last_name if user.profile else '' }}</li>
+      <li class="list-group-item"><strong>شماره دانشجویی:</strong> {{ user.student_number }}</li>
+      <li class="list-group-item"><strong>کد ملی:</strong> {{ user.profile.national_code if user.profile else '-' }}</li>
+      <li class="list-group-item"><strong>تلفن:</strong> {{ user.profile.phone_number if user.profile else '-' }}</li>
+      <li class="list-group-item"><strong>جنسیت:</strong> {{ user.profile.gender if user.profile else '-' }}</li>
+      <li class="list-group-item"><strong>آدرس:</strong> {{ user.profile.address if user.profile else '-' }}</li>
+      <li class="list-group-item"><strong>نقش:</strong> {{ user.role.name if user.role else '-' }}</li>
+      <li class="list-group-item"><strong>تاریخ ثبت‌نام:</strong> {{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else '-' }}</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
