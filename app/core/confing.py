@@ -18,7 +18,6 @@ def _parse_csv(value: str, default: Tuple[str, ...]) -> Tuple[str, ...]:
 
 
 @dataclass(frozen=True)
-
 class Settings:
     database_url: str
     sql_echo: bool
@@ -32,21 +31,6 @@ class Settings:
     log_level: str
     admin_login_password: str
 
-@lru_cache(maxsize=1)
-def get_settings() -> Settings:
-    return Settings(
-        database_url=os.getenv("DATABASE_URL", "sqlite:///./basij.db"),
-        sql_echo=_parse_bool(os.getenv("SQL_ECHO"), False),
-        cors_allow_origins=_parse_csv(os.getenv("CORS_ALLOW_ORIGINS"), ("*",)),
-        cors_allow_credentials=_parse_bool(os.getenv("CORS_ALLOW_CREDENTIALS"), True),
-        cors_allow_methods=_parse_csv(os.getenv("CORS_ALLOW_METHODS"), ("*",)),
-        cors_allow_headers=_parse_csv(os.getenv("CORS_ALLOW_HEADERS"), ("*",)),
-        secret_key=os.getenv("SECRET_KEY", "CHANGE_THIS_SECRET_KEY"),
-        access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")),
-        cookie_secure=_parse_bool(os.getenv("COOKIE_SECURE"), False),
-        log_level=os.getenv("LOG_LEVEL", "INFO"),
-        admin_login_password=os.getenv("ADMIN_LOGIN_PASSWORD", "admin123"),
-    )
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
@@ -61,7 +45,7 @@ def get_settings() -> Settings:
         access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")),
         cookie_secure=_parse_bool(os.getenv("COOKIE_SECURE"), False),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
-        admin_login_password=os.getenv("ADMIN_LOGIN_PASSWORD", "change-me"),
+        admin_login_password=os.getenv("ADMIN_LOGIN_PASSWORD", "change-this-admin-password"),
     )
 
 
